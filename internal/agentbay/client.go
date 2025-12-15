@@ -1362,6 +1362,9 @@ func (cw *clientWrapper) GetDockerfileTemplate(ctx context.Context, request *cli
 	if !dara.IsNil(request.Source) {
 		query["Source"] = request.Source
 	}
+	if !dara.IsNil(request.SourceImageId) {
+		query["SourceImageId"] = request.SourceImageId
+	}
 	// Template is reserved for future extension
 	if !dara.IsNil(request.Template) {
 		query["Template"] = request.Template
