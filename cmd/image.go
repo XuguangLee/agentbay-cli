@@ -141,12 +141,14 @@ var imageInitCmd = &cobra.Command{
 	Long: `Download a Dockerfile template from the cloud to the local root directory.
 
 This command fetches a Dockerfile template from AgentBay and saves it as 'Dockerfile' 
-in the current directory. The source image ID is automatically determined based on 
-your environment and region configuration.
+in the current directory. The source image ID must be specified via --sourceImageId flag.
 
-Example:
-  # Download Dockerfile template
-  agentbay image init`,
+Examples:
+  # Download Dockerfile template with source image ID
+  agentbay image init --sourceImageId code-space-debian-12
+  
+  # Short form
+  agentbay image init -i code-space-debian-12`,
 	Args: cobra.NoArgs,
 	RunE: runImageInit,
 }
@@ -171,7 +173,11 @@ func init() {
 	imageListCmd.Flags().IntP("page", "p", 1, "Page number (default: 1)")
 	imageListCmd.Flags().IntP("size", "s", 10, "Page size (default: 10)")
 
-	// No flags for image init command - source is always AgentBay
+	// Add required flag for image init command - use sourceImageId to match API field name
+	imageInitCmd.Flags().StringP("sourceImageId", "i", "", "Source image ID (required)")
+
+	// Mark required flag
+	imageInitCmd.MarkFlagRequired("sourceImageId")
 
 	// Add subcommands to image command
 	ImageCmd.AddCommand(imageCreateCmd)
@@ -518,16 +524,16 @@ func runImageCreate(cmd *cobra.Command, args []string) error {
 					return fmt.Errorf("dockerfile validation failed")
 				} else {
 					// Actual build failure
-				fmt.Printf("[ERROR] ❌ Image build failed\n")
-				if taskMsg != nil && *taskMsg != "" {
-					fmt.Printf("[ERROR] Error details: %s\n", *taskMsg)
-				}
-				// Print Request ID for debugging
-				if taskResp.Body.GetRequestId() != nil {
-					fmt.Printf("[DEBUG] Request ID: %s\n", *taskResp.Body.GetRequestId())
-				}
-				fmt.Printf("[DOC] Task ID: %s\n", *finalTaskId)
-				return fmt.Errorf("image build failed")
+					fmt.Printf("[ERROR] ❌ Image build failed\n")
+					if taskMsg != nil && *taskMsg != "" {
+						fmt.Printf("[ERROR] Error details: %s\n", *taskMsg)
+					}
+					// Print Request ID for debugging
+					if taskResp.Body.GetRequestId() != nil {
+						fmt.Printf("[DEBUG] Request ID: %s\n", *taskResp.Body.GetRequestId())
+					}
+					fmt.Printf("[DOC] Task ID: %s\n", *finalTaskId)
+					return fmt.Errorf("image build failed")
 				}
 			case "RUNNING", "PENDING", "Preparing":
 				// Continue polling
@@ -1348,6 +1354,18 @@ func runImageInit(cmd *cobra.Command, args []string) error {
 	// Source is always AgentBay
 	source := "AgentBay"
 
+	// Get sourceImageId from command line flag (required)
+	sourceImageId, _ := cmd.Flags().GetString("sourceImageId")
+	if sourceImageId == "" {
+		return printErrorMessage(
+			"[ERROR] Missing required flag: --sourceImageId",
+			"",
+			"[TIP] Usage: agentbay image init --sourceImageId <image-id>",
+			"[NOTE] Example: agentbay image init --sourceImageId code-space-debian-12",
+			"[NOTE] Short form: agentbay image init -i code-space-debian-12",
+		)
+	}
+
 	// Load configuration and check authentication
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -1359,17 +1377,6 @@ func runImageInit(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "[ERROR] Not authenticated. Please run 'agentbay login' first\n")
 		return fmt.Errorf("not authenticated. Please run 'agentbay login' first")
 	}
-
-	// Get environment and endpoint to determine default SourceImageId
-	env := config.GetEnvironment()
-	apiConfig := config.LoadAPIConfig(nil)
-	endpoint := apiConfig.Endpoint
-
-	// Auto-detect SourceImageId based on environment and endpoint
-	sourceImageId := config.GetDefaultSourceImageId(env, endpoint)
-	isDomestic := config.IsDomesticEndpoint(endpoint)
-	log.Debugf("[DEBUG] Auto-detected SourceImageId: %s (env: %s, endpoint: %s, domestic: %v)",
-		sourceImageId, env, endpoint, isDomestic)
 
 	// Create API client
 	apiClient := agentbay.NewClientFromConfig(cfg)
@@ -1399,16 +1406,8 @@ func runImageInit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		log.Debugf("[DEBUG] GetDockerfileTemplate API call failed: %v", err)
 
-		// Check if the error is an authentication error
-		if IsAuthenticationError(err) {
-			fmt.Fprintf(os.Stderr, "\n[ERROR] Not authenticated. Please run 'agentbay login' first\n")
-			return fmt.Errorf("not authenticated. Please run 'agentbay login' first")
-		}
-
-		fmt.Printf("\n[ERROR] Failed to get Dockerfile template. Please check your authentication and try again.\n")
-		if log.GetLevel() >= log.DebugLevel {
-			fmt.Printf("[DEBUG] Error details: %v\n", err)
-		}
+		// Show the original error message
+		fmt.Fprintf(os.Stderr, "\n[ERROR] Failed to get Dockerfile template: %v\n", err)
 		return fmt.Errorf("failed to get Dockerfile template: %w", err)
 	}
 	fmt.Printf(" Done.\n")
