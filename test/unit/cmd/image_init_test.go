@@ -50,16 +50,12 @@ func TestImageInitCommand_Metadata(t *testing.T) {
 
 	t.Run("command should have sourceImageId flag", func(t *testing.T) {
 		// Source is always AgentBay, but sourceImageId flag is required
-	t.Run("command should have sourceImageId flag", func(t *testing.T) {
-		// Source is always AgentBay, but sourceImageId flag is required
 		flags := imageInitCmd.Flags()
 		// Check that --sourceImageId flag exists
 		sourceImageIdFlag := flags.Lookup("sourceImageId")
 		assert.NotNil(t, sourceImageIdFlag, "image init should have --sourceImageId flag")
-		// Check that --source flag doesn't exist
-		// Check that --sourceImageId flag exists
-		sourceImageIdFlag := flags.Lookup("sourceImageId")
-		assert.NotNil(t, sourceImageIdFlag, "image init should have --sourceImageId flag")
+		// Verify flag exists and can be accessed
+		assert.Equal(t, "sourceImageId", sourceImageIdFlag.Name)
 		// Check that --source flag doesn't exist
 		sourceFlag := flags.Lookup("source")
 		assert.Nil(t, sourceFlag, "image init should not have --source flag")
@@ -157,7 +153,6 @@ func TestImageInitCommand_FileOperations(t *testing.T) {
 }
 
 func TestImageInitCommand_SourceImageIdFlag(t *testing.T) {
-func TestImageInitCommand_SourceImageIdFlag(t *testing.T) {
 	// Find the init subcommand
 	var imageInitCmd *cobra.Command
 	for _, subCmd := range cmd.ImageCmd.Commands() {
@@ -177,22 +172,12 @@ func TestImageInitCommand_SourceImageIdFlag(t *testing.T) {
 		assert.Equal(t, "sourceImageId", sourceImageIdFlag.Name)
 	})
 
-	t.Run("should have sourceImageId flag", func(t *testing.T) {
-		flags := imageInitCmd.Flags()
-		sourceImageIdFlag := flags.Lookup("sourceImageId")
-		assert.NotNil(t, sourceImageIdFlag, "image init should have --sourceImageId flag")
-		// Verify flag exists and can be accessed
-		assert.Equal(t, "sourceImageId", sourceImageIdFlag.Name)
-	})
-
 	t.Run("should not have source flag", func(t *testing.T) {
 		flags := imageInitCmd.Flags()
 		sourceFlag := flags.Lookup("source")
 		assert.Nil(t, sourceFlag, "image init should not have --source flag")
 	})
 
-	t.Run("command description should mention sourceImageId", func(t *testing.T) {
-		// The command description should mention --sourceImageId
 	t.Run("command description should mention sourceImageId", func(t *testing.T) {
 		// The command description should mention --sourceImageId
 		longDesc := imageInitCmd.Long
