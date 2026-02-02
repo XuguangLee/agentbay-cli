@@ -10,7 +10,7 @@ AgentBay CLI provides comprehensive image management capabilities:
 
 - **Authentication**: Secure OAuth-based login with Aliyun account integration
 - **Dockerfile Template**: Download Dockerfile templates from the cloud
-- **Image Creation**: Build custom images from Dockerfiles with base image support
+- **Image Creation**: Build custom images from Dockerfiles with base image support; automatically parses and uploads COPY/ADD referenced files
 - **Image Management**: Activate, deactivate, and monitor image instances
 - **Image Listing**: Browse user and system images with separated display, pagination and filtering support
 - **Configuration Management**: Secure token storage and automatic token refresh

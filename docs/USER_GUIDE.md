@@ -124,7 +124,8 @@ agentbay image create my-app --dockerfile ./Dockerfile --imageId code-space-debi
 [BUILD] Creating image 'my-app'...
 [STEP 1/4] Getting upload credentials... Done.
 [STEP 2/4] Uploading Dockerfile... Done.
-[STEP 3/4] Creating Docker image task... Done.
+[STEP 3/4] Uploading ADD/COPY files (N files)... Done.   # Only when Dockerfile contains COPY/ADD
+[STEP 4/4] Creating Docker image task... Done.
 [STEP 4/4] Building image (Task ID: task-xxxxx)...
 [STATUS] Build status: RUNNING
 [SUCCESS] Image created successfully!
@@ -132,6 +133,15 @@ agentbay image create my-app --dockerfile ./Dockerfile --imageId code-space-debi
 ```
 
 Build time varies based on image size. Use `-v` for detailed logs.
+
+### ADD/COPY File Upload
+
+When creating an image, the CLI parses `COPY` and `ADD` instructions in your Dockerfile and automatically uploads the referenced local files:
+
+- **Path rules**: File paths are relative to the directory containing the Dockerfile
+- **Supported**: Single files, multiple files, subdirectories, wildcards (e.g. `*.py`), `--chown` option
+- **Not supported**: Absolute paths, path traversal (e.g. `../`), URL sources in `ADD` (e.g. `ADD https://...`)
+- **Note**: Ensure all files referenced by COPY/ADD exist in the Dockerfile directory or its subdirectories
 
 ## 6. Activate Image
 
