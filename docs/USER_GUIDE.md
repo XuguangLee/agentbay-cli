@@ -154,17 +154,17 @@ agentbay image activate imgc-xxxxx...xxx
 Starts the image instance.
 
 **Options:**
-- `--cpu, -c`: CPU cores (2, 4, or 8) - must be paired with memory
-- `--memory, -m`: Memory in GB (4, 8, or 16) - must be paired with CPU
+- `--cpu, -c`: CPU cores (2, 4, or 8) - must be paired with memory; default: 2 when not specified
+- `--memory, -m`: Memory in GB (4, 8, or 16) - must be paired with CPU; default: 4 when not specified
 
 **Supported Resource Combinations:**
-- `2c4g` - 2 CPU cores with 4 GB memory
+- `2c4g` - 2 CPU cores with 4 GB memory **(default when --cpu/--memory not specified)**
 - `4c8g` - 4 CPU cores with 8 GB memory
 - `8c16g` - 8 CPU cores with 16 GB memory
 
 **Examples:**
 ```bash
-# Activate with default resources
+# Activate with default resources (2c4g)
 agentbay image activate imgc-xxxxx...xxx
 
 # Activate with specific resources

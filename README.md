@@ -34,7 +34,7 @@ agentbay image init -i code-space-debian-12
 # 4. Create a custom image (using system image as base)
 agentbay image create myapp --dockerfile ./Dockerfile --imageId code-space-debian-12
 
-# 5. Activate the image
+# 5. Activate the image (uses 2c4g by default; specify --cpu/--memory for other sizes)
 agentbay image activate imgc-xxxxx...xxx
 
 # 6. Deactivate when done

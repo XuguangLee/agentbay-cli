@@ -99,14 +99,14 @@ This command creates a resource group for the specified User image, making it
 available for deployment. Only User type images can be activated.
 
 Supported CPU and Memory combinations:
-  2c4g  - 2 CPU cores with 4 GB memory
+  2c4g  - 2 CPU cores with 4 GB memory (default)
   4c8g  - 4 CPU cores with 8 GB memory
   8c16g - 8 CPU cores with 16 GB memory
 
-If no CPU/memory is specified, default resources will be used.
+If no CPU/memory is specified, 2c4g (2 CPU, 4 GB memory) will be used by default.
 
 Examples:
-  # Activate a user image with default resources
+  # Activate with default resources (2c4g)
   agentbay image activate imgc-xxxxxxxxxxxxxx
 
   # Activate with specific CPU and memory
@@ -164,8 +164,8 @@ func init() {
 	imageCreateCmd.MarkFlagRequired("imageId")
 
 	// Add flags to image activate command
-	imageActivateCmd.Flags().IntP("cpu", "c", 0, "CPU cores (e.g., 2, 4, 8)")
-	imageActivateCmd.Flags().IntP("memory", "m", 0, "Memory in GB (e.g., 4, 8, 16)")
+	imageActivateCmd.Flags().IntP("cpu", "c", 0, "CPU cores (2, 4, or 8; default: 2 when not specified)")
+	imageActivateCmd.Flags().IntP("memory", "m", 0, "Memory in GB (4, 8, or 16; default: 4 when not specified)")
 
 	// Add flags to image list command
 	imageListCmd.Flags().StringP("os-type", "o", "", "Filter by OS type: Linux, Android, or Windows (optional)")
@@ -1049,10 +1049,20 @@ func uploadFileToOSS(localPath, ossUrl string) error {
 		retryConfig.MaxRetries+1, lastErr)
 }
 
+// DefaultActivateCPU and DefaultActivateMemory are the default resource allocation when user does not specify --cpu/--memory
+const DefaultActivateCPU = 2
+const DefaultActivateMemory = 4
+
 func runImageActivate(cmd *cobra.Command, args []string) error {
 	imageId := args[0]
 	cpu, _ := cmd.Flags().GetInt("cpu")
 	memory, _ := cmd.Flags().GetInt("memory")
+
+	// Apply default 2c4g when not specified
+	if cpu == 0 && memory == 0 {
+		cpu = DefaultActivateCPU
+		memory = DefaultActivateMemory
+	}
 
 	// Validate CPU and memory combination
 	if err := ValidateCPUMemoryCombo(cpu, memory); err != nil {
@@ -1060,9 +1070,7 @@ func runImageActivate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("[ACTIVATE] Activating image '%s'...\n", imageId)
-	if cpu > 0 || memory > 0 {
-		fmt.Printf("[RESOURCE] CPU: %d cores, Memory: %d GB\n", cpu, memory)
-	}
+	fmt.Printf("[RESOURCE] CPU: %d cores, Memory: %d GB\n", cpu, memory)
 
 	// Load configuration and check authentication
 	cfg, err := config.GetConfig()
@@ -1284,6 +1292,12 @@ func runImageDeactivate(cmd *cobra.Command, args []string) error {
 	} else if IsActivated(imageInfo.ResourceStatus) {
 		// Image is activated, proceed with deactivation
 		shouldDeleteResourceGroup = true
+	} else if IsFailed(imageInfo.ResourceStatus) {
+		// Activation failed - cannot delete without ResourceGroupId
+		fmt.Printf("[INFO] Image is in Activation Failed state.\n")
+		fmt.Printf("[INFO] The image may recover automatically to Available state. Please try again later.\n")
+		fmt.Printf("[INFO] Alternatively, use the web console to deactivate this image.\n")
+		return nil
 	} else {
 		// Image is in an unexpected state
 		return fmt.Errorf("cannot deactivate image in current state: %s", TranslateImageResourceStatus(imageInfo.ResourceStatus))
@@ -1291,14 +1305,32 @@ func runImageDeactivate(cmd *cobra.Command, args []string) error {
 
 	// Delete resource group if needed
 	if shouldDeleteResourceGroup {
+		fmt.Printf("Fetching resource group info...")
+		resourceGroupId, err := GetResourceGroupIdForImage(statusCtx, apiClient, imageId)
+		if err != nil {
+			fmt.Printf(" Failed.\n")
+			log.Debugf("[DEBUG] GetResourceGroupIdForImage failed: %v", err)
+			return fmt.Errorf("failed to get resource group info: %w", err)
+		}
+		fmt.Printf(" Done.\n")
+
+		if resourceGroupId == "" {
+			fmt.Printf("[WARN] Could not find ResourceGroupId for this image.\n")
+			fmt.Printf("[INFO] The image may recover automatically to Available state. Please try again later.\n")
+			fmt.Printf("[INFO] Alternatively, use the web console to deactivate this image.\n")
+			return nil
+		}
+
 		fmt.Printf("Deleting resource group...")
 		deleteReq := &client.DeleteResourceGroupRequest{}
 		deleteReq.SetImageId(imageId)
+		deleteReq.SetResourceGroupId(resourceGroupId)
 
 		// Debug: Print request details
 		if log.GetLevel() >= log.DebugLevel {
 			log.Debugf("[DEBUG] DeleteResourceGroup Request:")
 			log.Debugf("[DEBUG] - ImageId: %s", imageId)
+			log.Debugf("[DEBUG] - ResourceGroupId: %s", resourceGroupId)
 		}
 
 		// Use a separate context for the delete operation

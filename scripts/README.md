@@ -125,7 +125,7 @@ agentbay image list --system-only      # List only system images
 # Create a custom image using system image as base
 agentbay image create myImage --dockerfile ./Dockerfile --imageId code-space-debian-12
 
-# Activate an image
+# Activate an image (uses 2c4g by default; use --cpu/--memory for other sizes)
 agentbay image activate img-7a8b9c1d0e
 
 # Deactivate an image
